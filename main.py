@@ -95,6 +95,13 @@ def main():
         minute=start_time.minute - (start_time.minute % 10), second=0, microsecond=0
     )
 
+    total = (end_time - start_time) // timedelta(minutes=interval) + 1
+    print(
+        f'Downloading {max(total, 0)} image(s) for {webcam_name} ({quality}) '
+        f'from {start_time:%Y-%m-%d %H:%M} to {end_time:%Y-%m-%d %H:%M}. '
+        'Each request is followed by a 10 s pause, this may take a while.'
+    )
+
     # max 3 threads at a time
     active_threads: List = []
     while start_time <= end_time:
@@ -108,6 +115,10 @@ def main():
         else:
             active_threads[0].join()
             active_threads.pop(0)
+
+    for t in active_threads:
+        t.join()
+    print('Done.')
 
 
 if __name__ == '__main__':

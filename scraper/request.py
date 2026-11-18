@@ -42,6 +42,7 @@ class ThreadedFetcher(Thread):
                 headers['User-Agent'] += 'AppleWebKit/537.36 (KHTML, like Gecko) '
                 headers['User-Agent'] += 'Chrome/96.0.4664.110 Safari/537.36'
 
+                print(f'Downloading {self.url} ...')
                 response = get(self.url, stream=True, headers=headers)
                 if response.status_code == 200:
                     print(f'Saving Image from {self.time} under {path}.')
@@ -57,6 +58,7 @@ class ThreadedFetcher(Thread):
                         )
                     )
                 # avoid frequent request
+                print('Waiting 10 s before the next request (rate limit).')
                 time.sleep(10)
                 # TODO: use scrapy or proxies to avoid status code:429
         except Exception as e:
