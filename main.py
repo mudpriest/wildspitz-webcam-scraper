@@ -2,23 +2,17 @@
 Webcam Scraper
 
 Usage:
-    scraper.py
-    scraper.py [-w WEBCAM]
-    scraper.py [-q QUALITY]
-    scraper.py [-b BEGIN]
-    scraper.py [-b BEGIN -e END]
-    scraper.py [-b BEGIN -e END -i INTERVAL]
-    scraper.py [-w WEBCAM -q QUALITY -b BEGIN -e END -i INTERVAL]
+    main.py [-w WEBCAM] [-q QUALITY] [-b BEGIN] [-e END] [-i INTERVAL]
 
 Options:
--h, --help            help
+-h, --help                        help
 
--w, --webcam          Select either 'wildspitz' or 'rigi' webcam
--q, --quality         Quality of the Image (full, default, half, quarter, eight)
+-w WEBCAM, --webcam WEBCAM        Select either 'wildspitz' or 'rigi' webcam
+-q QUALITY, --quality QUALITY     Quality of the Image (full, default, half, quarter, eight)
 
--b, --begin           First image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
--e, --end             Last image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
--i, --interval        Interval in minute steps (min. 10 min, and can only be increased in 10 min steps)
+-b BEGIN, --begin BEGIN           First image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
+-e END, --end END                 Last image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
+-i INTERVAL, --interval INTERVAL  Interval in minute steps (min. 10 min, and can only be increased in 10 min steps)
 """
 import os
 import json
@@ -53,10 +47,10 @@ def main():
 
     if args['--begin']:
         try:
-            if len(args['BEGIN']) > 5:
-                start_time = datetime.strptime(args['BEGIN'], time_format)
+            if len(args['--begin']) > 5:
+                start_time = datetime.strptime(args['--begin'], time_format)
             else:
-                new_time = datetime.strptime(args['BEGIN'], short_time_format)
+                new_time = datetime.strptime(args['--begin'], short_time_format)
                 start_time = start_time.replace(
                     hour=new_time.hour, minute=new_time.minute
                 )
@@ -67,23 +61,23 @@ def main():
 
     if args['--end']:
         try:
-            if len(args['END']) > 5:
-                end_time = datetime.strptime(args['END'], time_format)
+            if len(args['--end']) > 5:
+                end_time = datetime.strptime(args['--end'], time_format)
             else:
-                new_time = datetime.strptime(args['END'], short_time_format)
+                new_time = datetime.strptime(args['--end'], short_time_format)
                 end_time = end_time.replace(hour=new_time.hour, minute=new_time.minute)
         except ValueError:
             print('End parameter did not contain correct date format')
 
     if args['--interval']:
-        interval = int(args['INTERVAL'])
+        interval = int(args['--interval'])
         if interval == 0:
             raise ValueError('Interval must at least be 10 minutes')
         elif interval % 10 > 0:
             raise ValueError('Interval can only be a value divisible by 10')
 
     if args['--webcam']:
-        webcam_name = str(args['WEBCAM']).lower()
+        webcam_name = str(args['--webcam']).lower()
 
         if webcam_name not in WEBCAMS:
             raise ValueError('No valid Webcam was selected')
@@ -93,7 +87,7 @@ def main():
     # default quality is 'default'
     quality = QUALITIES[1]
     if args['--quality']:
-        quality = str(args['QUALITY'])
+        quality = str(args['--quality'])
         if quality not in QUALITIES:
             raise ValueError(f'Quality must be one of: {", ".join(QUALITIES)}')
 
@@ -103,7 +97,7 @@ def main():
 
     # max 3 threads at a time
     active_threads: List = []
-    while start_time < end_time:
+    while start_time <= end_time:
         if len(active_threads) < 3:
             t = ThreadedFetcher(
                 create_url(webcam_link, start_time, quality), start_time, webcam_name

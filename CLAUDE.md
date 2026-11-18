@@ -23,7 +23,7 @@ Times are `hh-mm` (today) or `YYYY-MM-DD_hh-mm`. Interval must be a multiple of 
 
 ## Architecture
 
-- `main.py` — CLI. The module docstring **is** the docopt spec, so changing flags means editing the docstring. Options are declared as bare flags and values are positional (`args['--webcam']` is a bool, the value is in `args['WEBCAM']`). Builds the time loop, rounds the start down to a 10-minute boundary, and runs at most 3 `ThreadedFetcher` threads concurrently. Iteration is `while start < end`, so the end time is exclusive.
+- `main.py` — CLI. The module docstring **is** the docopt spec, so changing flags means editing the docstring. Every option takes a value and is read via `args['--name']` (`None` if not given). Builds the time loop, rounds the start down to a 10-minute boundary, and runs at most 3 `ThreadedFetcher` threads concurrently. Iteration is `while start <= end`, so the end time is inclusive.
 - `webcams.json` — webcam name → Roundshot storage base URL. Adding a webcam = adding an entry here (the `-w` docstring text is just help text).
 - `scraper/request.py`
   - `create_url()` builds `{base}/{YYYY-MM-DD}/{HH-MM-00}/{YYYY-MM-DD}-{HH-MM-00}_{quality}.jpg`.
