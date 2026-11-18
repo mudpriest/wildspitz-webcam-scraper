@@ -27,5 +27,5 @@ Times are `hh-mm` (today) or `YYYY-MM-DD_hh-mm`. Interval must be a multiple of 
 - `webcams.json` — webcam name → Roundshot storage base URL. Adding a webcam = adding an entry here (the `-w` docstring text is just help text).
 - `scraper/request.py`
   - `create_url()` builds `{base}/{YYYY-MM-DD}/{HH-MM-00}/{YYYY-MM-DD}-{HH-MM-00}_{quality}.jpg`.
-  - `ThreadedFetcher` downloads one image to `{quality}/{YYYY}-{M}/{D}/{webcam}/{HH-MM}.jpg` (month/day not zero-padded), relative to the current working directory. It parses quality back out of the URL, skips files that already exist, and sleeps 10 s after each request to avoid HTTP 429 rate limiting.
+  - `ThreadedFetcher` downloads one image to `images/{webcam}/{YYYYmmdd-HHMMSS}-{quality}.jpg` (gitignored), relative to the current working directory. It parses quality back out of the URL, skips files that already exist, and sleeps 10 s after each request to avoid HTTP 429 rate limiting.
 

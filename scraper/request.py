@@ -29,22 +29,11 @@ class ThreadedFetcher(Thread):
         self.quality = (self.url).split('/')[-1].split('_')[-1].split('.')[0]
 
     def run(self) -> None:
-        # path = Path(f'{self.time.year}-{self.time.month}') / Path(
-        #     str(self.time.day) / Path(self.webcam)
-        # )
-        path = Path(
-            '{}/{}-{}/{}/{}'.format(
-                self.quality,
-                self.time.year,
-                self.time.month,
-                self.time.day,
-                self.webcam,
-            )
-        )
+        path = Path('images') / self.webcam
         os.makedirs(path, exist_ok=True)
 
         try:
-            img_path = path / Path(f'{self.time.hour:02}-{self.time.minute:02}.jpg')
+            img_path = path / f'{self.time:%Y%m%d-%H%M%S}-{self.quality}.jpg'
             if os.path.exists(img_path):
                 print('Skip {} (Already existed)'.format(img_path))
             else:
