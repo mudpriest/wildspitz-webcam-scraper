@@ -8,20 +8,22 @@ Options:
 -h, --help                        help
 
 -w WEBCAM, --webcam WEBCAM        Select either 'wildspitz' or 'rigi' webcam
--q QUALITY, --quality QUALITY     Quality of the Image (full, default, half, quarter, eight)
+-q QUALITY, --quality QUALITY     Quality of the Image (full, default, half, quarter, medium)
 
 -b BEGIN, --begin BEGIN           First image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
 -e END, --end END                 Last image you want to download (hh-mm) or (YYYY-MM-DD_hh-mm)
 -i INTERVAL, --interval INTERVAL  Interval in minute steps (min. 10 min, and can only be increased in 10 min steps)
 """
 import os
+import sys
 import json
 from typing import List
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 from docopt import docopt
 
-from scraper.request import create_url, image_path, ThreadedFetcher
+from scraper.request import create_url, image_path, download_image
 
 
 curr_dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -29,71 +31,67 @@ curr_dir_path = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(curr_dir_path, 'webcams.json'), 'r') as webcam_json:
     WEBCAMS = json.load(webcam_json)
 
-QUALITIES = ['full', 'default', 'half', 'quarter', 'eight']
+QUALITIES = ['full', 'default', 'half', 'quarter', 'medium']
+
+
+def parse_time(value: str, base: datetime, option: str) -> datetime:
+    """Parse 'YYYY-MM-DD_hh-mm', or 'hh-mm' on the date of `base`."""
+    try:
+        if len(value) > 5:
+            return datetime.strptime(value, '%Y-%m-%d_%H-%M')
+        t = datetime.strptime(value, '%H-%M')
+        return base.replace(hour=t.hour, minute=t.minute)
+    except ValueError:
+        sys.exit(f'{option} must be hh-mm or YYYY-MM-DD_hh-mm, got {value!r}')
 
 
 def main():
-    # argument parsing
     args = docopt(__doc__, help=True)
-    short_time_format = '%H-%M'
-    time_format = '%Y-%m-%d_%H-%M'
 
-    # settings default values
-    start_time = datetime.now()
-    end_time = datetime.now()
+    now = datetime.now()
+    start_time = now
+    end_time = now
     interval = 10
-    webcam_link = WEBCAMS['wildspitz']
     webcam_name = 'wildspitz'
 
     if args['--begin']:
-        try:
-            if len(args['--begin']) > 5:
-                start_time = datetime.strptime(args['--begin'], time_format)
-            else:
-                new_time = datetime.strptime(args['--begin'], short_time_format)
-                start_time = start_time.replace(
-                    hour=new_time.hour, minute=new_time.minute
-                )
-                # should by default only download one image
-                end_time = start_time
-        except ValueError:
-            print('Start parameter did not contain correct date format')
+        start_time = parse_time(args['--begin'], now, '--begin')
+        if len(args['--begin']) <= 5:
+            # by default only download one image
+            end_time = start_time
 
     if args['--end']:
-        try:
-            if len(args['--end']) > 5:
-                end_time = datetime.strptime(args['--end'], time_format)
-            else:
-                new_time = datetime.strptime(args['--end'], short_time_format)
-                end_time = end_time.replace(hour=new_time.hour, minute=new_time.minute)
-        except ValueError:
-            print('End parameter did not contain correct date format')
+        # a short end time takes its date from the start time
+        end_time = parse_time(args['--end'], start_time, '--end')
 
     if args['--interval']:
-        interval = int(args['--interval'])
-        if interval == 0:
-            raise ValueError('Interval must at least be 10 minutes')
-        elif interval % 10 > 0:
-            raise ValueError('Interval can only be a value divisible by 10')
+        try:
+            interval = int(args['--interval'])
+        except ValueError:
+            sys.exit('Interval must be an integer')
+        if interval < 10:
+            sys.exit('Interval must at least be 10 minutes')
+        if interval % 10:
+            sys.exit('Interval can only be a value divisible by 10')
 
     if args['--webcam']:
         webcam_name = str(args['--webcam']).lower()
-
         if webcam_name not in WEBCAMS:
-            raise ValueError('No valid Webcam was selected')
-
-        webcam_link = WEBCAMS[webcam_name]
+            sys.exit(f'No valid Webcam was selected, use one of: {", ".join(WEBCAMS)}')
+    webcam_link = WEBCAMS[webcam_name]
 
     # default quality is 'default'
     quality = QUALITIES[1]
     if args['--quality']:
         quality = str(args['--quality'])
         if quality not in QUALITIES:
-            raise ValueError(f'Quality must be one of: {", ".join(QUALITIES)}')
+            sys.exit(f'Quality must be one of: {", ".join(QUALITIES)}')
 
     start_time = start_time.replace(
         minute=start_time.minute - (start_time.minute % 10), second=0, microsecond=0
     )
+    if end_time < start_time:
+        sys.exit('End time must not be before start time')
 
     # only fetch images that are not on disk yet
     pending: List[datetime] = []
@@ -114,20 +112,12 @@ def main():
     if pending:
         print('Each request is followed by a 10 s pause, this may take a while.')
 
-    # max 3 threads at a time
-    active_threads: List = []
-    while pending:
-        if len(active_threads) < 3:
-            dt = pending.pop(0)
-            t = ThreadedFetcher(create_url(webcam_link, dt, quality), dt, webcam_name)
-            t.start()
-            active_threads.append(t)
-        else:
-            active_threads[0].join()
-            active_threads.pop(0)
-
-    for t in active_threads:
-        t.join()
+    # max 3 downloads at a time
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        for dt in pending:
+            pool.submit(
+                download_image, create_url(webcam_link, dt, quality), dt, webcam_name, quality
+            )
     print('Done.')
 
 
