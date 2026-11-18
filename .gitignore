@@ -253,5 +253,9 @@ cython_debug/
 .idea
 
 # image folders
-202*-*/
+/full/
+/default/
+/half/
+/quarter/
+/eight/
 

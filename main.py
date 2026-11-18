@@ -32,10 +32,6 @@ from scraper.request import create_url, ThreadedFetcher
 
 curr_dir_path = os.path.dirname(os.path.abspath(__file__))
 
-# WEBCAMS = {
-#     'wildspitz': 'https://storage.roundshot.com/5595515f75aba9.83008277',
-#     'rigi': 'https://storage.roundshot.com/5c1a1db365b684.49402499',
-# }
 with open(os.path.join(curr_dir_path, 'webcams.json'), 'r') as webcam_json:
     WEBCAMS = json.load(webcam_json)
 
@@ -72,7 +68,7 @@ def main():
     if args['--end']:
         try:
             if len(args['END']) > 5:
-                start_time = datetime.strptime(args['END'], time_format)
+                end_time = datetime.strptime(args['END'], time_format)
             else:
                 new_time = datetime.strptime(args['END'], short_time_format)
                 end_time = end_time.replace(hour=new_time.hour, minute=new_time.minute)
@@ -97,8 +93,9 @@ def main():
     # default quality is 'default'
     quality = QUALITIES[1]
     if args['--quality']:
-        if str(args['QUALITY']) in QUALITIES:
-            quality = str(args['QUALITY'])
+        quality = str(args['QUALITY'])
+        if quality not in QUALITIES:
+            raise ValueError(f'Quality must be one of: {", ".join(QUALITIES)}')
 
     start_time = start_time.replace(
         minute=start_time.minute - (start_time.minute % 10), second=0, microsecond=0
