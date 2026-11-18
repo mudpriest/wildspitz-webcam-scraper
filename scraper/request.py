@@ -20,6 +20,10 @@ def create_url(pre_url: str, dt: datetime, quality: str):
     return full_url
 
 
+def image_path(webcam: str, dt: datetime, quality: str) -> Path:
+    return Path('images') / webcam / f'{dt:%Y%m%d-%H%M%S}-{quality}.jpg'
+
+
 class ThreadedFetcher(Thread):
     def __init__(self, url: str, time: datetime, webcam: str):
         Thread.__init__(self, name='ThreadedFetcher')
@@ -29,11 +33,11 @@ class ThreadedFetcher(Thread):
         self.quality = (self.url).split('/')[-1].split('_')[-1].split('.')[0]
 
     def run(self) -> None:
-        path = Path('images') / self.webcam
+        img_path = image_path(self.webcam, self.time, self.quality)
+        path = img_path.parent
         os.makedirs(path, exist_ok=True)
 
         try:
-            img_path = path / f'{self.time:%Y%m%d-%H%M%S}-{self.quality}.jpg'
             if os.path.exists(img_path):
                 print('Skip {} (Already existed)'.format(img_path))
             else:

@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 
 from docopt import docopt
 
-from scraper.request import create_url, ThreadedFetcher
+from scraper.request import create_url, image_path, ThreadedFetcher
 
 
 curr_dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -95,22 +95,32 @@ def main():
         minute=start_time.minute - (start_time.minute % 10), second=0, microsecond=0
     )
 
-    total = (end_time - start_time) // timedelta(minutes=interval) + 1
+    # only fetch images that are not on disk yet
+    pending: List[datetime] = []
+    skipped = 0
+    t = start_time
+    while t <= end_time:
+        if image_path(webcam_name, t, quality).exists():
+            skipped += 1
+        else:
+            pending.append(t)
+        t += timedelta(minutes=interval)
+
     print(
-        f'Downloading {max(total, 0)} image(s) for {webcam_name} ({quality}) '
-        f'from {start_time:%Y-%m-%d %H:%M} to {end_time:%Y-%m-%d %H:%M}. '
-        'Each request is followed by a 10 s pause, this may take a while.'
+        f'{webcam_name} ({quality}) {start_time:%Y-%m-%d %H:%M} to '
+        f'{end_time:%Y-%m-%d %H:%M}: {len(pending)} image(s) to download, '
+        f'{skipped} already downloaded (skipped).'
     )
+    if pending:
+        print('Each request is followed by a 10 s pause, this may take a while.')
 
     # max 3 threads at a time
     active_threads: List = []
-    while start_time <= end_time:
+    while pending:
         if len(active_threads) < 3:
-            t = ThreadedFetcher(
-                create_url(webcam_link, start_time, quality), start_time, webcam_name
-            )
+            dt = pending.pop(0)
+            t = ThreadedFetcher(create_url(webcam_link, dt, quality), dt, webcam_name)
             t.start()
-            start_time += timedelta(minutes=interval)
             active_threads.append(t)
         else:
             active_threads[0].join()
